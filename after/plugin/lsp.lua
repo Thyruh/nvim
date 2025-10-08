@@ -44,7 +44,7 @@ local function on_attach(client, bufnr)
 end
 
 -- List of servers you want
-local servers = { "pyright", "hls", "gopls", "clangd" }
+local servers = {"clangd"}
 
 -- Setup Mason to ensure servers are installed
 mason_lspconfig.setup({ ensure_installed = servers })
