@@ -33,9 +33,8 @@ return require('packer').startup(function(use)
    use('thePrimeagen/harpoon')
    use('mbbill/undotree')
    use('tpope/vim-fugitive')
-
    use('nvim-lualine/lualine.nvim')
-
+   use('blazkowolf/gruber-darker.nvim')
    use('folke/tokyonight.nvim')
 
    use {

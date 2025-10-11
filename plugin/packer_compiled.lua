@@ -130,6 +130,11 @@ _G.packer_plugins = {
     path = "/home/thyruh/.local/share/nvim/site/pack/packer/start/friendly-snippets",
     url = "https://github.com/rafamadriz/friendly-snippets"
   },
+  ["gruber-darker.nvim"] = {
+    loaded = true,
+    path = "/home/thyruh/.local/share/nvim/site/pack/packer/start/gruber-darker.nvim",
+    url = "https://github.com/blazkowolf/gruber-darker.nvim"
+  },
   harpoon = {
     loaded = true,
     path = "/home/thyruh/.local/share/nvim/site/pack/packer/start/harpoon",
