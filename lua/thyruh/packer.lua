@@ -36,6 +36,7 @@ return require('packer').startup(function(use)
    use('nvim-lualine/lualine.nvim')
    use('blazkowolf/gruber-darker.nvim')
    use('folke/tokyonight.nvim')
+   use('folke/flash.nvim')
 
    use {
       'VonHeikemen/lsp-zero.nvim',
