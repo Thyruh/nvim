@@ -1,12 +1,8 @@
 vim.g.mapleader = " "  -- Set the leader key to space
 
 -- Open file explorer with <leader>pv
-vim.keymap.set("n", "<leader>pv", function()
-    vim.cmd("Ex")
-end)
-
 vim.keymap.set("n", "<leader><leader>", function()
-    vim.cmd("so")
+    vim.cmd("Ex")
 end)
 
 vim.keymap.set("n", "<C-f>", "<cmd>silent !tmux neww tmux-sessionizer<CR>")

@@ -1,65 +1,91 @@
--- Ensure cmp and mason-lspconfig are available
-local ok_cmp, cmp = pcall(require, "cmp")
-if not ok_cmp then return end
+local mason = require("mason")
+local mason_lspconfig = require("mason-lspconfig")
+local lspconfig = require("lspconfig")
+local cmp_nvim_lsp = require("cmp_nvim_lsp")
 
-local ok_mason, mason = pcall(require, "mason")
-if not ok_mason then return end
+-- Global capabilities
+local capabilities = cmp_nvim_lsp.default_capabilities(
+   vim.lsp.protocol.make_client_capabilities()
+)
 
-local ok_mason, mason_lspconfig = pcall(require, "mason-lspconfig")
-if not ok_mason then return end
+-- Shared on_attach
+local on_attach = function(client, bufnr)
+   local opts = { noremap = true, silent = true, buffer = bufnr }
+local function go_to_definition()
+    local params = vim.lsp.util.make_position_params()
+    vim.lsp.buf_request(0, "textDocument/definition", params, function(err, result)
+        if err or not result then return end
+        local loc
 
--- Setup Mason first
-mason.setup()
+        if vim.tbl_islist(result) then
+            loc = result[1]  -- take the first location if multiple
+        else
+            loc = result  -- single Location
+        end
 
--- Setup nvim-cmp for autocompletion
-local cmp_select = { behavior = cmp.SelectBehavior.Select }
-local cmp_mappings = {
-  ['<M-p>'] = cmp.mapping.select_prev_item(cmp_select),
-  ['<M-n>'] = cmp.mapping.select_next_item(cmp_select),
-  ['<C-y>'] = cmp.mapping.confirm({ select = true }),
-  ['<M-Space>'] = cmp.mapping.complete(),
-}
+        if not loc then return end
 
-cmp.setup({
-  mapping = cmp_mappings,
-  sources = {
-    { name = 'nvim_lsp' },
-  },
+        -- Normalize LocationLink to Location
+        if loc.targetUri or loc.targetRange then
+            loc = {
+                uri = loc.targetUri,
+                range = loc.targetSelectionRange or loc.targetRange,
+            }
+        end
+
+        -- Convert URI → buffer
+        local bufnr = vim.uri_to_bufnr(loc.uri)
+        if not vim.api.nvim_buf_is_loaded(bufnr) then
+            vim.fn.bufload(bufnr)
+        end
+
+        -- Jump to line/col
+        vim.api.nvim_set_current_buf(bufnr)
+        local line = loc.range.start.line
+        local col  = loc.range.start.character
+        vim.api.nvim_win_set_cursor(0, {line + 1, col})
+        vim.cmd("normal! zz")
+    end)
+end
+
+   -- keymaps
+   vim.keymap.set('n', 'gd', go_to_definition, opts)
+   vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)
+   vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
+   vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, opts)
+   vim.keymap.set('n', '<leader>ca', vim.lsp.buf.code_action, opts)
+
+   vim.keymap.set('n', '<leader>f', function()
+      vim.diagnostic.setloclist({ open = true })  -- sends all diagnostics to location list
+   end, opts)
+
+end
+
+-- === Mason setup ===
+mason.setup({
+   -- optional: PATH handling, etc.
 })
 
--- LSP on_attach function
-local function on_attach(client, bufnr)
-  local opts = { buffer = bufnr, remap = false }
+-- Mason-lspconfig ensures clangd is installed
+mason_lspconfig.setup({
+   ensure_installed = { "clangd" },
+   automatic_installation = true,
+})
 
-  vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-  vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-  vim.keymap.set("n", "<leader>vws", vim.lsp.buf.workspace_symbol, opts)
-  vim.keymap.set("n", "<leader>vd", vim.diagnostic.open_float, opts)
-  vim.keymap.set("n", "[d", vim.diagnostic.goto_next, opts)
-  vim.keymap.set("n", "]d", vim.diagnostic.goto_prev, opts)
-  vim.keymap.set("n", "<leader>vca", vim.lsp.buf.code_action, opts)
-  vim.keymap.set("n", "<leader>vrr", vim.lsp.buf.references, opts)
-  vim.keymap.set("n", "<leader>vrn", vim.lsp.buf.rename, opts)
-  vim.keymap.set("i", "<C-h>", vim.lsp.buf.signature_help, opts)
-end
+-- === Serve-d ===
+lspconfig.serve_d.setup({
+   on_attach = on_attach,
+   capabilities = capabilities,
+   filetypes = { "d" },
+   cmd = { "/home/thyruh/serve-d" },
+   root_dir = lspconfig.util.root_pattern("dub.json", ".git"),
+   flags = { debounce_text_changes = 150 },
+})
 
--- List of servers you want
-local servers = {"clangd"}
+-- === clangd via Mason ===
+lspconfig.clangd.setup({
+   on_attach = on_attach,
+   capabilities = capabilities,
+   flags = { debounce_text_changes = 150 },
+})
 
--- Setup Mason to ensure servers are installed
-mason_lspconfig.setup({ ensure_installed = servers })
-
--- Setup LSP servers using vim.lsp.config safely
-for _, server in ipairs(servers) do
-  local cfg = vim.lsp.config[server]
-  if cfg and cfg.setup then
-    cfg.setup({
-      on_attach = on_attach,
-      capabilities = vim.tbl_deep_extend(
-        "force",
-        vim.lsp.protocol.make_client_capabilities(),
-        require('cmp_nvim_lsp').default_capabilities()
-      ),
-    })
-  end
-end
