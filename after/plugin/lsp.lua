@@ -2,90 +2,83 @@ local mason = require("mason")
 local mason_lspconfig = require("mason-lspconfig")
 local lspconfig = require("lspconfig")
 local cmp_nvim_lsp = require("cmp_nvim_lsp")
+local telescope_builtin = require("telescope.builtin")
 
--- Global capabilities
+-- === Capabilities ===
 local capabilities = cmp_nvim_lsp.default_capabilities(
    vim.lsp.protocol.make_client_capabilities()
 )
 
--- Shared on_attach
-local on_attach = function(client, bufnr)
-   local opts = { noremap = true, silent = true, buffer = bufnr }
-local function go_to_definition()
-    local params = vim.lsp.util.make_position_params()
-    vim.lsp.buf_request(0, "textDocument/definition", params, function(err, result)
-        if err or not result then return end
-        local loc
+-- === Utilities ===
 
-        if vim.tbl_islist(result) then
-            loc = result[1]  -- take the first location if multiple
-        else
-            loc = result  -- single Location
+-- Position encoding wrapper
+do
+    local orig = vim.lsp.util.make_position_params
+    vim.lsp.util.make_position_params = function(win, encoding)
+        if encoding == nil then
+            local bufnr = vim.api.nvim_get_current_buf()
+            local clients = vim.lsp.get_clients({ bufnr = bufnr })
+            if #clients > 0 then
+                encoding = clients[1].offset_encoding or "utf-16"
+            else
+                encoding = "utf-16"
+            end
         end
-
-        if not loc then return end
-
-        -- Normalize LocationLink to Location
-        if loc.targetUri or loc.targetRange then
-            loc = {
-                uri = loc.targetUri,
-                range = loc.targetSelectionRange or loc.targetRange,
-            }
-        end
-
-        -- Convert URI → buffer
-        local bufnr = vim.uri_to_bufnr(loc.uri)
-        if not vim.api.nvim_buf_is_loaded(bufnr) then
-            vim.fn.bufload(bufnr)
-        end
-
-        -- Jump to line/col
-        vim.api.nvim_set_current_buf(bufnr)
-        local line = loc.range.start.line
-        local col  = loc.range.start.character
-        vim.api.nvim_win_set_cursor(0, {line + 1, col})
-        vim.cmd("normal! zz")
-    end)
+        return orig(win, encoding)
+    end
 end
 
-   -- keymaps
-   vim.keymap.set('n', 'gd', go_to_definition, opts)
-   vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)
-   vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
-   vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, opts)
-   vim.keymap.set('n', '<leader>ca', vim.lsp.buf.code_action, opts)
-
-   vim.keymap.set('n', '<leader>f', function()
-      vim.diagnostic.setloclist({ open = true })  -- sends all diagnostics to location list
-   end, opts)
-
+-- Strip CR from diagnostics to avoid ^M
+do
+    local orig = vim.lsp.handlers["textDocument/publishDiagnostics"]
+    vim.lsp.handlers["textDocument/publishDiagnostics"] = function(err, result, ctx, config)
+        if result and result.diagnostics then
+            for _, d in ipairs(result.diagnostics) do
+                if type(d.message) == "string" then
+                    d.message = d.message:gsub("\r", "")
+                end
+            end
+        end
+        return orig(err, result, ctx, config)
+    end
 end
+
+-- === Global LSP keymaps ===
+local opts = { noremap = true, silent = true }
+vim.keymap.set("n", "gd", telescope_builtin.lsp_definitions or vim.lsp.buf.definition, opts)
+vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
+vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
+vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
+vim.keymap.set("n", "<leader>f", function()
+    vim.diagnostic.setloclist({ open = true })
+end, opts)
 
 -- === Mason setup ===
-mason.setup({
-   -- optional: PATH handling, etc.
-})
-
--- Mason-lspconfig ensures clangd is installed
+mason.setup({})
 mason_lspconfig.setup({
-   ensure_installed = { "clangd" },
-   automatic_installation = true,
+    ensure_installed = { "clangd" },
+    automatic_installation = true,
 })
 
--- === Serve-d ===
+-- === Helper to prevent multiple serve-d clients per root ===
+local function serve_d_root_dir(fname)
+    return lspconfig.util.root_pattern("dub.json", ".git")(fname)
+end
+
+-- === serve-d setup ===
 lspconfig.serve_d.setup({
-   on_attach = on_attach,
-   capabilities = capabilities,
-   filetypes = { "d" },
-   cmd = { "/home/thyruh/serve-d" },
-   root_dir = lspconfig.util.root_pattern("dub.json", ".git"),
-   flags = { debounce_text_changes = 150 },
+    capabilities = capabilities,
+    filetypes = { "d" },
+    cmd = { "/home/thyruh/serve-d" },
+    root_dir = lspconfig.util.root_pattern("dub.json", ".git"),
+    flags = { debounce_text_changes = 150 },
+    single_file_support = false,
 })
 
--- === clangd via Mason ===
+-- === clangd setup ===
 lspconfig.clangd.setup({
-   on_attach = on_attach,
-   capabilities = capabilities,
-   flags = { debounce_text_changes = 150 },
+    capabilities = capabilities,
+    flags = { debounce_text_changes = 150 },
 })
 

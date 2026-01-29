@@ -6,5 +6,3 @@ vim.keymap.set('n', '<leader>hf', builtin.commands, { noremap = true, silent = t
 vim.keymap.set('n', '<leader>ps', function()
     builtin.live_grep()
 end, { noremap = true, silent = true })
-
-vim.keymap.set("n", "<leader>f", builtin.diagnostics, { desc = "Show workspace diagnostics" })
