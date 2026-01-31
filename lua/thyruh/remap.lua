@@ -16,8 +16,10 @@ vim.keymap.set("n", "<leader>Y", [["+Y]])  -- Yanks the whole line to system cli
 vim.keymap.set("v", "J", ":m '>+1<CR>gv=gv")
 vim.keymap.set("v", "K", ":m '<-2<CR>gv=gv")
 
-vim.keymap.set("n", "Q", "0")
 vim.keymap.set("n", "E", "$")
+vim.keymap.set("n", "Q", "0")
+vim.keymap.set("n", "yE", "y$")
+vim.keymap.set("n", "dE", "d$")
 
 vim.g.mapleader = " "  -- Set the leader key to space
 
@@ -37,9 +39,6 @@ vim.keymap.set("n", "<leader>Y", [["+Y]])  -- Yanks the whole line to system cli
 vim.keymap.set("v", "J", ":m '>+1<CR>gv=gv")
 vim.keymap.set("v", "K", ":m '<-2<CR>gv=gv")
 
-vim.keymap.set("n", "Q", "0")
-vim.keymap.set("n", "E", "$")
-
 -- === Emacs-inspired window management ===
 
 vim.keymap.set("n", "<leader>0", function()
@@ -58,4 +57,3 @@ end, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>8", function()
     vim.cmd("split")
 end, { noremap = true, silent = true })
-

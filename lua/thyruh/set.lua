@@ -8,10 +8,7 @@ vim.opt.fillchars = { eob = ' ' }
 vim.opt.nu = true
 vim.opt.relativenumber = true
 
-vim.defer_fn(function()
-   vim.o.guicursor = "n-v-c-i:block"
-   vim.cmd("set guicursor+=a:blinkon30000-blinkoff3000-blinkwait500")
-end, 100)
+vim.o.guicursor = "n-v-c:block,i:ver25,r:hor20"
 
 vim.opt.tabstop = 3
 vim.opt.softtabstop = 3
@@ -19,6 +16,7 @@ vim.opt.shiftwidth = 3
 vim.opt.expandtab = true
 vim.opt.smartindent = false
 vim.opt.cindent = true
+vim.g.netrw_banner = 0
 vim.opt.cinoptions:append("g0")
 
 
